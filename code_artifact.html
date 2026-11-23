@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客戶存幣領幣管理系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QRCode.js Library CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Google Fonts Inter & Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for table containers */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full font-sans text-slate-800 flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & System Name -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-amber-500 text-slate-900 p-2 rounded-lg font-black text-xl flex items-center justify-center w-10 h-10 shadow">
+                        <i class="fa-solid font-bold fa-coins"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight tracking-wide">代幣託管管理系統</h1>
+                        <p class="text-xs text-slate-400">Customer Coin Deposit & Withdrawal Manager</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="switchTab('lookup')" id="nav-lookup" class="tab-btn px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 bg-amber-500 text-slate-900 font-semibold shadow">
+                        <i class="fa-solid fa-magnifying-glass"></i> 個人查詢
+                    </button>
+                    <button onclick="switchTab('transaction')" id="nav-transaction" class="admin-only tab-btn px-4 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-right-left"></i> 存取幣登記
+                    </button>
+                    <button onclick="switchTab('machine')" id="nav-machine" class="admin-only tab-btn px-4 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-gamepad"></i> 機台補開分
+                    </button>
+                    <button onclick="switchTab('customers')" id="nav-customers" class="admin-only tab-btn px-4 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-users"></i> 會員總覽
+                    </button>
+                    <button onclick="switchTab('history')" id="nav-history" class="tab-btn px-4 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left"></i> 交易紀錄
+                    </button>
+                </nav>
+
+                <!-- Data Management Controls -->
+                <div class="hidden sm:flex items-center space-x-2 admin-only">
+                    <button onclick="loadSampleData()" title="載入範例資料" class="text-xs px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition">
+                        <i class="fa-solid fa-database mr-1"></i> 範例數據
+                    </button>
+                    <button onclick="exportDataCSV()" title="匯出 CSV" class="text-xs px-3 py-1.5 rounded bg-emerald-700 text-white hover:bg-emerald-600 transition">
+                        <i class="fa-solid fa-file-csv mr-1"></i> 匯出CSV
+                    </button>
+                    <button onclick="exportDataJSON()" title="匯出 JSON 備份" class="text-xs px-3 py-1.5 rounded bg-blue-700 text-white hover:bg-blue-600 transition">
+                        <i class="fa-solid fa-download mr-1"></i> 備份JSON
+                    </button>
+                    <button onclick="triggerImportJSON()" title="匯入備份檔" class="text-xs px-3 py-1.5 rounded bg-indigo-700 text-white hover:bg-indigo-600 transition">
+                        <i class="fa-solid fa-upload mr-1"></i> 匯入
+                    </button>
+                    <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="importDataJSON(event)">
+                    <button onclick="clearAllDataConfirm()" title="清空資料" class="text-xs px-3 py-1.5 rounded bg-rose-900/60 text-rose-300 hover:bg-rose-800 transition">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Navigation Bar -->
+        <div class="md:hidden bg-slate-800 border-t border-slate-700 flex justify-around p-1 text-xs">
+            <button onclick="switchTab('lookup')" id="mobile-nav-lookup" class="mobile-tab-btn flex-1 py-2 text-center text-amber-400 font-bold border-b-2 border-amber-400">
+                <i class="fa-solid fa-magnifying-glass block text-base mb-0.5"></i> 查詢
+            </button>
+            <button onclick="switchTab('transaction')" id="mobile-nav-transaction" class="admin-only mobile-tab-btn flex-1 py-2 text-center text-slate-400">
+                <i class="fa-solid fa-right-left block text-base mb-0.5"></i> 存取
+            </button>
+            <button onclick="switchTab('machine')" id="mobile-nav-machine" class="admin-only mobile-tab-btn flex-1 py-2 text-center text-slate-400">
+                <i class="fa-solid fa-gamepad block text-base mb-0.5"></i> 機台
+            </button>
+            <button onclick="switchTab('customers')" id="mobile-nav-customers" class="admin-only mobile-tab-btn flex-1 py-2 text-center text-slate-400">
+                <i class="fa-solid fa-users block text-base mb-0.5"></i> 會員
+            </button>
+            <button onclick="switchTab('history')" id="mobile-nav-history" class="mobile-tab-btn flex-1 py-2 text-center text-slate-400">
+                <i class="fa-solid fa-clock-rotate-left block text-base mb-0.5"></i> 紀錄
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        
+        <!-- GLOBAL SYSTEM SUMMARY STATS DASHBOARD (Admin Only) -->
+        <section class="admin-only grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Total Active Coins in System -->
+            <div class="bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 text-slate-950 p-5 rounded-2xl shadow-md flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -right-2 -bottom-2 opacity-15 text-7xl text-slate-950 pointer-events-none">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black uppercase tracking-wider opacity-85">全館總存幣庫存</span>
+                    <span class="w-8 h-8 rounded-full bg-slate-950/10 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-coins"></i>
+                    </span>
+                </div>
+                <div class="my-2">
+                    <span class="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight" id="sysTotalBalance">0</span>
+                    <span class="text-xs font-bold ml-1">枚</span>
+                </div>
+                <p class="text-xs font-medium opacity-80">全體會員現有存幣總和</p>
+            </div>
+
+            <!-- Total System Customers -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">託管會員總數</span>
+                    <span class="p-2 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold"><i class="fa-solid fa-users"></i></span>
+                </div>
+                <div class="my-2">
+                    <span class="text-3xl font-extrabold text-slate-900 font-mono" id="sysTotalCustomers">0</span>
+                    <span class="text-xs text-slate-500 ml-1">位</span>
+                </div>
+                <p class="text-xs text-slate-400">系統中有效登記會員</p>
+            </div>
+
+            <!-- Total System Deposited -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">全館累計存入總額</span>
+                    <span class="p-2 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-bold"><i class="fa-solid fa-arrow-down-left"></i></span>
+                </div>
+                <div class="my-2">
+                    <span class="text-3xl font-extrabold text-emerald-600 font-mono" id="sysTotalDeposited">0</span>
+                    <span class="text-xs text-slate-500 ml-1">枚</span>
+                </div>
+                <p class="text-xs text-slate-400">歷史發行/存入代幣總量</p>
+            </div>
+
+            <!-- Total System Withdrawn -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">全館累計提領總額</span>
+                    <span class="p-2 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold"><i class="fa-solid fa-arrow-up-right"></i></span>
+                </div>
+                <div class="my-2">
+                    <span class="text-3xl font-extrabold text-rose-600 font-mono" id="sysTotalWithdrawn">0</span>
+                    <span class="text-xs text-slate-500 ml-1">枚</span>
+                </div>
+                <p class="text-xs text-slate-400">歷史銷毀/領取代幣總量</p>
+            </div>
+        </section>
+
+        <!-- TAB 1: QUICK PERSONAL LOOKUP (個人存幣查詢) -->
+        <section id="tab-lookup" class="tab-content space-y-6">
+            <!-- Search Header Box -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-user-gear text-amber-500"></i> 個人存幣狀態快速查詢
+                </h2>
+                <p class="text-sm text-slate-500 mb-6">請輸入會員編號或姓名進行檢索，即可快速查看代幣餘額與完整進出紀錄。</p>
+                
+                <div class="relative max-w-2xl">
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <input type="text" id="searchInput" onkeyup="handleSearchKeypress(event)" placeholder="輸入會員編號（如 C101）或會員姓名..." 
+                                class="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-slate-900 text-base shadow-inner outline-none transition">
+                            <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+                        <button onclick="executeSearch()" class="px-6 py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl shadow transition flex items-center gap-2">
+                            <span>查詢</span>
+                        </button>
+                    </div>
+                    <!-- Auto-complete Suggestions dropdown -->
+                    <div id="searchSuggestions" class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-60 overflow-y-auto divide-y divide-slate-100"></div>
+                </div>
+            </div>
+
+            <!-- Query Result Dashboard (Hidden by default until search or sample select) -->
+            <div id="lookupResult" class="hidden space-y-6">
+                <!-- Customer Profile & Stat Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Customer Card -->
+                    <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm flex flex-col justify-between relative overflow-hidden">
+                        <div class="absolute -right-4 -bottom-4 opacity-10 text-8xl text-white pointer-events-none">
+                            <i class="fa-solid fa-id-card"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs uppercase tracking-wider text-amber-400 font-semibold">客戶資料</span>
+                                <button onclick="showCustomerQRCodeModal(selectedSearchCustId)" title="顯示專屬 QR Code" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-qrcode"></i> 專屬 QR
+                                </button>
+                            </div>
+                            <h3 class="text-2xl font-bold mt-1" id="resCustName">---</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">編號：<span id="resCustId" class="font-mono text-slate-200">---</span></p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                            <span class="text-slate-400">電話: <span id="resCustPhone" class="text-slate-300">--</span></span>
+                            <button onclick="quickActionFromLookup()" class="admin-only text-amber-400 hover:underline font-semibold flex items-center gap-1">
+                                立即存取 <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Current Balance Card -->
+                    <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs uppercase tracking-wider font-bold opacity-80">目前存幣餘額</span>
+                            <div class="w-8 h-8 rounded-full bg-slate-950/10 flex items-center justify-center">
+                                <i class="fa-solid fa-coins text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="my-2">
+                            <span class="text-4xl font-extrabold tracking-tight font-mono" id="resCurrentBalance">0</span>
+                            <span class="text-sm font-medium ml-1">枚</span>
+                        </div>
+                        <p class="text-xs opacity-75">可在店家隨時兌換或領取</p>
+                    </div>
+
+                    <!-- Total Deposited Card -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-500">歷史總存入</span>
+                            <span class="p-2 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-bold"><i class="fa-solid fa-arrow-down-left mr-1"></i>存入</span>
+                        </div>
+                        <div class="my-2">
+                            <span class="text-3xl font-bold text-emerald-600 font-mono" id="resTotalDeposited">0</span>
+                            <span class="text-xs text-slate-500 ml-1">枚</span>
+                        </div>
+                        <p class="text-xs text-slate-400">累計儲值數量</p>
+                    </div>
+
+                    <!-- Total Withdrawn Card -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-500">歷史總提取</span>
+                            <span class="p-2 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold"><i class="fa-solid fa-arrow-up-right mr-1"></i>領取</span>
+                        </div>
+                        <div class="my-2">
+                            <span class="text-3xl font-bold text-rose-600 font-mono" id="resTotalWithdrawn">0</span>
+                            <span class="text-xs text-slate-500 ml-1">枚</span>
+                        </div>
+                        <p class="text-xs text-slate-400">累計提領數量</p>
+                    </div>
+                </div>
+
+                <!-- Individual Transaction History -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-slate-400"></i> 個人異動明細紀錄
+                        </h3>
+                        <span id="resTxCount" class="text-xs px-2.5 py-1 rounded-full bg-slate-200 font-medium text-slate-600">共 0 筆記錄</span>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-100/70 text-slate-500 text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th class="py-3.5 px-6">交易時間</th>
+                                    <th class="py-3.5 px-6">動作類型</th>
+                                    <th class="py-3.5 px-6 text-right">數量 (枚)</th>
+                                    <th class="py-3.5 px-6 text-right">異動後餘額</th>
+                                    <th class="py-3.5 px-6">經辦人員</th>
+                                    <th class="py-3.5 px-6">備註</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resTxTableBody" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty / Default Lookup State -->
+            <div id="lookupEmptyState" class="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                    <i class="fa-solid fa-users-viewfinder"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-700">尚未選擇會員</h3>
+                <p class="text-sm text-slate-400 max-w-sm mx-auto mt-1 mb-6">請在上方搜尋框輸入會員編號或姓名，或者從下方點選熱門會員快速預覽：</p>
+                
+                <div id="quickCustomerBadges" class="flex flex-wrap justify-center gap-2">
+                    <!-- Quick select pills generated here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: TRANSACTION ENTRY FORM (存取幣登記) -->
+        <section id="tab-transaction" class="tab-content hidden max-w-3xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                <div class="border-b border-slate-100 pb-4 mb-6">
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-money-bill-transfer text-amber-500"></i> 新增代幣存取登記
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">登記會員的代幣存入或領取操作，系統將自動校驗餘額。</p>
+                </div>
+
+                <form id="txForm" onsubmit="handleTransactionSubmit(event)" class="space-y-6">
+                    <!-- Action Type Selector Toggle -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">1. 選擇交易類別 *</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="relative flex items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition text-center select-none group" id="label-deposit">
+                                <input type="radio" name="actionType" value="deposit" checked onchange="updateFormActionStyle()" class="sr-only">
+                                <div>
+                                    <i class="fa-solid fa-circle-down text-2xl text-emerald-500 group-hover:scale-110 transition-transform mb-1 block"></i>
+                                    <span class="font-bold text-slate-800 block">存幣 (Deposit)</span>
+                                    <span class="text-xs text-slate-400">客戶將代幣存入店家</span>
+                                </div>
+                            </label>
+                            <label class="relative flex items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition text-center select-none group" id="label-withdraw">
+                                <input type="radio" name="actionType" value="withdraw" onchange="updateFormActionStyle()" class="sr-only">
+                                <div>
+                                    <i class="fa-solid fa-circle-up text-2xl text-rose-500 group-hover:scale-110 transition-transform mb-1 block"></i>
+                                    <span class="font-bold text-slate-800 block">領幣 (Withdraw)</span>
+                                    <span class="text-xs text-slate-400">客戶提取或消費代幣</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Customer Selector / Input -->
+                    <div class="space-y-4">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500">2. 會員資訊 *</label>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">會員編號</label>
+                                <div class="relative">
+                                    <input type="text" id="txCustomerId" required placeholder="例如：C101" 
+                                        oninput="onTxCustIdInput()"
+                                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-slate-900 outline-none uppercase">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">會員姓名</label>
+                                <input type="text" id="txCustomerName" required placeholder="例如：王小明" 
+                                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-slate-900 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Current Balance Real-time Indicator -->
+                        <div id="txBalancePreview" class="p-3 bg-slate-100 rounded-lg flex items-center justify-between text-xs text-slate-600 border border-slate-200">
+                            <span><i class="fa-solid fa-wallet text-amber-600 mr-1"></i> 目前帳戶紀錄餘額：</span>
+                            <span class="font-bold text-slate-900 font-mono text-sm" id="txCurrentBalValue">0 枚 (新會員)</span>
+                        </div>
+                    </div>
+
+                    <!-- Amount & Timestamp -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">3. 代幣數量 (枚) *</label>
+                        <div class="relative">
+                            <input type="number" id="txAmount" min="1" step="1" required placeholder="輸入存/領數量" 
+                                class="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-xl font-bold text-slate-900 outline-none">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">枚</span>
+                        </div>
+                    </div>
+
+                    <!-- Optional Info: Handler & Note -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">經手服務人員</label>
+                            <input type="text" id="txHandler" placeholder="如：櫃檯小張" 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-slate-800 text-sm outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">備註說明</label>
+                            <input type="text" id="txNote" placeholder="如：儲值優惠活動、桌號#5" 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-slate-800 text-sm outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Form Buttons -->
+                    <div class="pt-4 border-t border-slate-100 flex gap-3">
+                        <button type="submit" class="flex-1 py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl shadow transition text-base flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check"></i> 確認並提交登記
+                        </button>
+                        <button type="button" onclick="resetTxForm()" class="px-5 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl transition text-sm">
+                            重置
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- NEW TAB: MACHINE OPERATION (機台補幣/開洗分登記) -->
+        <section id="tab-machine" class="tab-content hidden max-w-3xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                <div class="border-b border-slate-100 pb-4 mb-6">
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-gamepad text-amber-500"></i> 機台補幣與開洗分作業
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">登記機台補幣/洗分（扣減全館庫存）或回幣/開分（增加全館庫存）。</p>
+                </div>
+
+                <form id="machineForm" onsubmit="handleMachineSubmit(event)" class="space-y-6">
+                    <!-- Action Type Selector Toggle -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">1. 選擇作業類別 *</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="relative flex items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition text-center select-none group" id="label-m-fill">
+                                <input type="radio" name="machineAction" value="fill" checked onchange="updateMachineActionStyle()" class="sr-only">
+                                <div>
+                                    <i class="fa-solid fa-circle-minus text-2xl text-rose-500 group-hover:scale-110 transition-transform mb-1 block"></i>
+                                    <span class="font-bold text-slate-800 block">補幣 / 洗分 (- 負數)</span>
+                                    <span class="text-xs text-slate-400">機台補幣/洗分消耗 (-庫存)</span>
+                                </div>
+                            </label>
+                            <label class="relative flex items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition text-center select-none group" id="label-m-return">
+                                <input type="radio" name="machineAction" value="return" onchange="updateMachineActionStyle()" class="sr-only">
+                                <div>
+                                    <i class="fa-solid fa-circle-plus text-2xl text-emerald-500 group-hover:scale-110 transition-transform mb-1 block"></i>
+                                    <span class="font-bold text-slate-800 block">回幣 / 開分 (+ 正數)</span>
+                                    <span class="text-xs text-slate-400">機台回幣或開分收回 (+庫存)</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Machine Name & Amount Input -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">2. 機台名稱 / 編號 *</label>
+                            <input type="text" id="mMachineName" required placeholder="例如：捕魚機 #01 或 斯洛 #A" 
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-slate-900 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">3. 代幣數量 (枚) *</label>
+                            <div class="relative">
+                                <input type="number" id="mAmount" min="1" step="1" required placeholder="輸入變更數量" 
+                                    class="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-xl font-bold text-slate-900 outline-none">
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">枚</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Handler & Note -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">經手服務人員</label>
+                            <input type="text" id="mHandler" placeholder="如：值班小陳" 
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs outline-none focus:ring-2 focus:ring-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">備註說明</label>
+                            <input type="text" id="mNote" placeholder="如：早班機台結算、開分補滿" 
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs outline-none focus:ring-2 focus:ring-amber-500">
+                        </div>
+                    </div>
+
+                    <!-- Form Buttons -->
+                    <div class="pt-4 border-t border-slate-100 flex gap-3">
+                        <button type="submit" class="flex-1 py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl shadow transition text-base flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check"></i> 提交機台作業登記
+                        </button>
+                        <button type="button" onclick="resetMachineForm()" class="px-5 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl transition text-sm">
+                            重置
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- TAB 3: CUSTOMER MANAGEMENT & OVERVIEW (會員列表與總覽) -->
+        <section id="tab-customers" class="tab-content hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <!-- Header & Controls -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-users text-amber-500"></i> 會員託管總覽名冊
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-0.5">檢視所有登記會員的當前代幣餘額與累計進出總額。</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="custTableFilter" oninput="renderCustomersTable()" placeholder="搜尋姓名或編號..." 
+                                class="pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500 w-48 sm:w-64">
+                        </div>
+                        <button onclick="openAddCustomerModal()" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition flex items-center gap-1.5 shadow">
+                            <i class="fa-solid fa-user-plus text-amber-400"></i> 新增會員
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Customer Table -->
+                <div class="overflow-x-auto custom-scrollbar mt-4">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-100/80 text-slate-500 text-xs uppercase tracking-wider">
+                            <tr>
+                                <th class="py-3 px-4">會員編號</th>
+                                <th class="py-3 px-4">姓名</th>
+                                <th class="py-3 px-4">聯絡電話</th>
+                                <th class="py-3 px-4 text-right">累計存入</th>
+                                <th class="py-3 px-4 text-right">累計領取</th>
+                                <th class="py-3 px-4 text-right">當前餘額 (枚)</th>
+                                <th class="py-3 px-4 text-center">快捷操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersTableBody" class="divide-y divide-slate-100">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                        <!-- Table Summary Footer Row -->
+                        <tfoot class="bg-amber-50/70 border-t-2 border-amber-200 text-slate-900 font-bold text-sm">
+                            <tr>
+                                <td colspan="3" class="py-3.5 px-4 font-bold text-amber-900">
+                                    <i class="fa-solid fa-calculator text-amber-600 mr-1.5"></i> 全館總計 (Total System Balance)
+                                </td>
+                                <td class="py-3.5 px-4 text-right font-mono text-emerald-700" id="tblTotalDeposited">+0</td>
+                                <td class="py-3.5 px-4 text-right font-mono text-rose-700" id="tblTotalWithdrawn">-0</td>
+                                <td class="py-3.5 px-4 text-right font-mono text-amber-900 text-base" id="tblTotalBalance">0 枚</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: TRANSACTION HISTORY LOG (歷史交易明細表) -->
+        <section id="tab-history" class="tab-content hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <!-- Sub Tab Switcher for History -->
+                <div class="flex border-b border-slate-200 mb-4">
+                    <button onclick="switchHistorySubTab('all')" id="subnav-history-all" class="py-2.5 px-4 font-bold text-sm border-b-2 border-amber-500 text-amber-600 flex items-center gap-1.5">
+                        <i class="fa-solid fa-list"></i> 全部紀錄
+                    </button>
+                    <button onclick="switchHistorySubTab('member')" id="subnav-history-member" class="py-2.5 px-4 font-medium text-sm text-slate-500 hover:text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-user"></i> 會員交易
+                    </button>
+                    <button onclick="switchHistorySubTab('machine')" id="subnav-history-machine" class="py-2.5 px-4 font-medium text-sm text-slate-500 hover:text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-gamepad"></i> 機台開洗分
+                    </button>
+                </div>
+
+                <!-- Filters Header -->
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> 交易與開洗分異動明細
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-0.5">完整記錄會員存領幣與機台補幣/開洗分歷史。</p>
+                    </div>
+                    
+                    <!-- Search & Filter Controls -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Action type filter -->
+                        <select id="historyTypeFilter" onchange="renderHistoryTable()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-700 outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="all">全部類型 (存+領+機台)</option>
+                            <option value="deposit">會員：存幣</option>
+                            <option value="withdraw">會員：領幣</option>
+                            <option value="machine_fill">機台：補幣/洗分 (-負數)</option>
+                            <option value="machine_return">機台：回幣/開分 (+正數)</option>
+                        </select>
+                        
+                        <!-- Search Keyword Filter -->
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="historySearchInput" oninput="renderHistoryTable()" placeholder="搜尋會員/機台、經手人..." 
+                                class="pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500 w-48 sm:w-60">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Table -->
+                <div class="overflow-x-auto custom-scrollbar mt-4">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-100/80 text-slate-500 text-xs uppercase tracking-wider">
+                            <tr>
+                                <th class="py-3.5 px-4">時間</th>
+                                <th class="py-3.5 px-4">對象 (會員 / 機台)</th>
+                                <th class="py-3.5 px-4">作業類型</th>
+                                <th class="py-3.5 px-4 text-right">交易數量 (正/負)</th>
+                                <th class="py-3.5 px-4 text-right">變動後個人/機台數據</th>
+                                <th class="py-3.5 px-4">經辦人員</th>
+                                <th class="py-3.5 px-4">備註說明</th>
+                                <th class="py-3.5 px-4 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Add New Customer (新增會員彈出視窗) -->
+    <div id="addCustomerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+                <h3 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-amber-500"></i> 新增會員資料
+                </h3>
+                <button type="button" onclick="closeAddCustomerModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+    <!-- MODAL: Customer QR Code Modal (會員專屬 QR Code 與連結彈出視窗) -->
+    <div id="qrCodeModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center relative border border-slate-200">
+            <button type="button" onclick="closeQRCodeModal()" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600 p-1">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+                <i class="fa-solid fa-qrcode"></i>
+            </div>
+            <h3 class="font-bold text-slate-900 text-lg" id="qrCustName">會員專屬 QR Code</h3>
+            <p class="text-xs text-slate-500 mb-4">掃描此條碼或複製連結，客戶即可隨時查看個人存幣狀態</p>
+
+            <!-- QR Code Render Container -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 inline-block my-2 shadow-inner">
+                <div id="qrcode" class="flex justify-center"></div>
+            </div>
+
+            <!-- Shareable URL Input -->
+            <div class="mt-4 text-left">
+                <label class="block text-xs font-bold text-slate-500 mb-1">專屬查詢連結：</label>
+                <div class="flex gap-2">
+                    <input type="text" id="qrShareUrl" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-xs font-mono text-slate-700 outline-none select-all">
+                    <button onclick="copyQRUrl()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-lg text-xs shrink-0 transition flex items-center gap-1">
+                        <i class="fa-solid fa-copy"></i> 複製
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW MODAL: Insufficient Balance Confirmation Modal (透支警示確認視窗) -->
+    <div id="insufficientBalanceModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-rose-200">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 text-lg">會員餘額不足提醒</h3>
+                    <p class="text-xs text-rose-500 font-semibold">此筆領幣交易將造成帳戶透支 (負數餘額)</p>
+                </div>
+            </div>
+
+            <div class="bg-rose-50/70 rounded-xl p-4 mb-5 border border-rose-100 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-600">會員名稱：</span>
+                    <span class="font-bold text-slate-800" id="ovCustName">--</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-600">當前帳戶餘額：</span>
+                    <span class="font-mono font-bold text-slate-800" id="ovCurrentBal">0 枚</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-600">本次欲提領數量：</span>
+                    <span class="font-mono font-bold text-rose-600" id="ovWithdrawAmt">0 枚</span>
+                </div>
+                <div class="pt-2 border-t border-rose-200/60 flex justify-between font-bold">
+                    <span class="text-rose-800">提領後帳戶餘額：</span>
+                    <span class="font-mono text-rose-700 text-base" id="ovAfterBal">0 枚</span>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-6">
+                確定要允許該會員透支提領嗎？點選「同意領取」將強制扣減餘額並記錄此筆交易。
+            </p>
+
+            <div class="flex gap-3">
+                <button type="button" onclick="confirmOverdraftWithdraw()" class="flex-1 py-3 bg-rose-600 hover:bg-rose-700 font-bold text-white rounded-xl shadow transition text-sm flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> 同意領取
+                </button>
+                <button type="button" onclick="cancelOverdraftWithdraw()" class="flex-1 py-3 bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 rounded-xl transition text-sm">
+                    不同意領取
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>&copy; 代幣託管與領取隨時查詢系統 &bull; 本地即時資料同步已啟用</span>
+            <span class="flex items-center gap-2">
+                <i class="fa-solid fa-database text-emerald-500"></i> LocalStorage 運作中
+            </span>
+        </div>
+    </footer>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        /**
+         * State Storage Key Definitions
+         */
+        const STORAGE_KEY_CUSTOMERS = 'coin_mgr_customers_v1';
+        const STORAGE_KEY_TRANSACTIONS = 'coin_mgr_transactions_v1';
+        const STORAGE_KEY_MACHINE_ADJUST = 'coin_mgr_machine_adjust_v1';
+
+        // App State
+        let customers = [];
+        let transactions = [];
+        let machineAdjustmentTotal = 0; // Cumulative machine adjustments altering global balance
+        let selectedSearchCustId = null;
+        let activeHistorySubTab = 'all';
+
+        // Pending transaction payload when overdraft confirmation is triggered
+        let pendingTxPayload = null;
+
+        // Helper function to format current local date and time: YYYY-MM-DD HH:mm
+        function getNowFormatted() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
+        }
+
+        /* ==========================================================================
+           DATA PERSISTENCE & INITIALIZATION
+           ========================================================================== */
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY_CUSTOMERS, JSON.stringify(customers));
+                localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+                localStorage.setItem(STORAGE_KEY_MACHINE_ADJUST, JSON.stringify(machineAdjustmentTotal));
+            } catch (e) {
+                console.error('Failed to save data to localStorage:', e);
+            }
+        }
+
+        function loadStoredData() {
+            try {
+                const storedCustomers = localStorage.getItem(STORAGE_KEY_CUSTOMERS);
+                const storedTransactions = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
+                const storedMachineAdjust = localStorage.getItem(STORAGE_KEY_MACHINE_ADJUST);
+
+                if (storedCustomers) {
+                    customers = JSON.parse(storedCustomers);
+                }
+                if (storedTransactions) {
+                    transactions = JSON.parse(storedTransactions);
+                }
+                if (storedMachineAdjust !== null) {
+                    machineAdjustmentTotal = JSON.parse(storedMachineAdjust);
+                }
+
+                // If no data exists, load initial sample data
+                if (!storedCustomers && !storedTransactions) {
+                    loadSampleData(false);
+                }
+            } catch (e) {
+                console.error('Failed to load data from localStorage:', e);
+                loadSampleData(false);
+            }
+        }
+
+        // Initialize application on page load
+        window.onload = function() {
+            loadStoredData();
+
+            // Check if client opened via QR code or shared URL with customer ID param (e.g. ?cust=C101)
+            const urlParams = new URLSearchParams(window.location.search);
+            const directCustId = urlParams.get('cust');
+
+            if (directCustId) {
+                // Client-Only View mode
+                document.body.classList.add('client-mode');
+                // Hide Admin Elements
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+
+                switchTab('lookup');
+                const targetCust = customers.find(c => c.id.toUpperCase() === directCustId.toUpperCase());
+                if (targetCust) {
+                    document.getElementById('searchInput').value = `${targetCust.name} (${targetCust.id})`;
+                    performLookup(targetCust.id);
+                } else {
+                    showToast(`找不到會員編號 [${directCustId}]`, "warning");
+                }
+            } else {
+                switchTab('lookup');
+            }
+
+            // Initial UI Update
+            renderQuickBadges();
+            updateFormActionStyle();
+            updateMachineActionStyle();
+        };
+
+        function loadSampleData(showNotification = true) {
+            customers = [
+                { id: 'C101', name: '陳大文', phone: '0912-888-777', balance: 350, totalDeposited: 500, totalWithdrawn: 150 },
+                { id: 'C102', name: '林美玲', phone: '0922-333-444', balance: 1200, totalDeposited: 1500, totalWithdrawn: 300 },
+                { id: 'C103', name: '張志豪', phone: '0935-111-222', balance: 80, totalDeposited: 200, totalWithdrawn: 120 },
+                { id: 'C104', name: '黃雅婷', phone: '0956-666-888', balance: 0, totalDeposited: 300, totalWithdrawn: 300 }
+            ];
+
+            const now = new Date();
+            const formatDate = (offsetDays, hours) => {
+                const d = new Date(now);
+                d.setDate(d.getDate() - offsetDays);
+                d.setHours(hours, 0, 0, 0);
+                return d.toISOString().slice(0, 16).replace('T', ' ');
+            };
+
+            transactions = [
+                { id: 'TX-1001', customerId: 'C101', customerName: '陳大文', type: 'deposit', amount: 500, balanceAfter: 500, datetime: formatDate(5, 14), handler: '店長王哥', note: '首次開戶儲值活動' },
+                { id: 'TX-1002', customerId: 'C101', customerName: '陳大文', type: 'withdraw', amount: 150, balanceAfter: 350, datetime: formatDate(3, 19), handler: '櫃檯小美', note: '機台消費領取代幣' },
+                { id: 'TX-1003', customerId: 'C102', customerName: '林美玲', type: 'deposit', amount: 1500, balanceAfter: 1500, datetime: formatDate(4, 11), handler: '店長王哥', note: 'VIP套餐買一千送五百' },
+                { id: 'TX-1004', customerId: 'C102', customerName: '林美玲', type: 'withdraw', amount: 300, balanceAfter: 1200, datetime: formatDate(1, 15), handler: '櫃檯小美', note: '好友同樂領取' },
+                { id: 'TX-1005', customerId: 'C103', customerName: '張志豪', type: 'deposit', amount: 200, balanceAfter: 200, datetime: formatDate(2, 18), handler: '服務生小強', note: '散客儲值' },
+                { id: 'TX-1006', customerId: 'C103', customerName: '張志豪', type: 'withdraw', amount: 120, balanceAfter: 80, datetime: formatDate(2, 21), handler: '服務生小強', note: '遊戲兌換' },
+                { id: 'TX-M101', customerId: 'MACHINE_01', customerName: '捕魚機 #A', category: 'machine', type: 'machine_fill', amount: 300, balanceAfter: -300, datetime: formatDate(1, 10), handler: '技師老李', note: '機台補幣/洗分 (-負數)' },
+                { id: 'TX-M102', customerId: 'MACHINE_02', customerName: '賽馬機 #B', category: 'machine', type: 'machine_return', amount: 100, balanceAfter: 100, datetime: formatDate(0, 12), handler: '技師老李', note: '機台回幣/開分 (+正數)' }
+            ];
+
+            machineAdjustmentTotal = -200; // -300 + 100
+
+            saveData();
+            refreshAllViews();
+            if (showNotification) showToast("已成功載入測試範例數據！", "success");
+        }
+
+        function clearAllDataConfirm() {
+            if (confirm("確定要清空所有會員、機台與交易紀錄嗎？此操作不可逆！")) {
+                customers = [];
+                transactions = [];
+                machineAdjustmentTotal = 0;
+                saveData();
+                refreshAllViews();
+                showToast("已清空所有資料", "info");
+            }
+        }
+
+        /* ==========================================================================
+           TAB NAVIGATION CONTROLLER
+           ========================================================================== */
+        
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // Show selected tab content
+            const activeContent = document.getElementById(`tab-${tabId}`);
+            if (activeContent) activeContent.classList.remove('hidden');
+
+            // Style Desktop Nav
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2";
+            });
+            const activeDesktopBtn = document.getElementById(`nav-${tabId}`);
+            if (activeDesktopBtn) {
+                activeDesktopBtn.className = "tab-btn px-4 py-2 rounded-md text-sm font-semibold bg-amber-500 text-slate-900 shadow flex items-center gap-2";
+            }
+
+            // Style Mobile Nav
+            document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+                btn.className = "mobile-tab-btn flex-1 py-2 text-center text-slate-400";
+            });
+            const activeMobileBtn = document.getElementById(`mobile-nav-${tabId}`);
+            if (activeMobileBtn) {
+                activeMobileBtn.className = "mobile-tab-btn flex-1 py-2 text-center text-amber-400 font-bold border-b-2 border-amber-400";
+            }
+
+            // Perform specific tab refresh logic
+            if (tabId === 'customers') renderCustomersTable();
+            if (tabId === 'history') renderHistoryTable();
+            if (tabId === 'lookup' && selectedSearchCustId) performLookup(selectedSearchCustId);
+        }
+
+        function refreshAllViews() {
+            renderGlobalStats();
+            renderQuickBadges();
+            renderCustomersTable();
+            renderHistoryTable();
+            if (selectedSearchCustId) {
+                performLookup(selectedSearchCustId);
+            } else {
+                hideLookupResult();
+            }
+        }
+
+        /* ==========================================================================
+           GLOBAL SYSTEM STATS DASHBOARD RENDERER
+           ========================================================================== */
+
+        function renderGlobalStats() {
+            const memberBalance = customers.reduce((sum, c) => sum + (c.balance || 0), 0);
+            // Total Active Coins in system includes member balances + machine adjustment total
+            const totalBalance = memberBalance + machineAdjustmentTotal;
+            const totalDeposited = customers.reduce((sum, c) => sum + (c.totalDeposited || 0), 0);
+            const totalWithdrawn = customers.reduce((sum, c) => sum + (c.totalWithdrawn || 0), 0);
+
+            document.getElementById('sysTotalBalance').textContent = totalBalance.toLocaleString();
+            document.getElementById('sysTotalCustomers').textContent = customers.length.toLocaleString();
+            document.getElementById('sysTotalDeposited').textContent = totalDeposited.toLocaleString();
+            document.getElementById('sysTotalWithdrawn').textContent = totalWithdrawn.toLocaleString();
+
+            // Update footer totals in Customers Table if present
+            const tblBal = document.getElementById('tblTotalBalance');
+            const tblDep = document.getElementById('tblTotalDeposited');
+            const tblWit = document.getElementById('tblTotalWithdrawn');
+
+            if (tblBal) tblBal.textContent = `${totalBalance.toLocaleString()} 枚`;
+            if (tblDep) tblDep.textContent = `+${totalDeposited.toLocaleString()}`;
+            if (tblWit) tblWit.textContent = `-${totalWithdrawn.toLocaleString()}`;
+        }
+
+        /* ==========================================================================
+           MACHINE OPERATION MODULE (機台補幣/開洗分)
+           ========================================================================== */
+
+        function updateMachineActionStyle() {
+            const isFill = document.querySelector('input[name="machineAction"]:checked').value === 'fill';
+            const fillLabel = document.getElementById('label-m-fill');
+            const returnLabel = document.getElementById('label-m-return');
+
+            if (isFill) {
+                fillLabel.className = "relative flex items-center justify-center p-4 border-2 border-rose-500 bg-rose-50/50 rounded-xl cursor-pointer transition text-center select-none shadow-sm";
+                returnLabel.className = "relative flex items-center justify-center p-4 border-2 border-slate-200 hover:border-slate-300 rounded-xl cursor-pointer transition text-center select-none opacity-60";
+            } else {
+                fillLabel.className = "relative flex items-center justify-center p-4 border-2 border-slate-200 hover:border-slate-300 rounded-xl cursor-pointer transition text-center select-none opacity-60";
+                returnLabel.className = "relative flex items-center justify-center p-4 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl cursor-pointer transition text-center select-none shadow-sm";
+            }
+        }
+
+        function handleMachineSubmit(e) {
+            e.preventDefault();
+
+            const action = document.querySelector('input[name="machineAction"]:checked').value; // 'fill' (負數) | 'return' (正數)
+            const machineName = document.getElementById('mMachineName').value.trim();
+            const amount = parseInt(document.getElementById('mAmount').value);
+            const dtVal = getNowFormatted();
+            const handler = document.getElementById('mHandler').value.trim();
+            const note = document.getElementById('mNote').value.trim();
+
+            if (!machineName) {
+                showToast("請輸入機台名稱或編號", "warning");
+                return;
+            }
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast("請輸入有效的正整數代幣數量", "warning");
+                return;
+            }
+
+            // Adjust global machine adjustment count: fill = -amount, return = +amount
+            if (action === 'fill') {
+                machineAdjustmentTotal -= amount;
+            } else {
+                machineAdjustmentTotal += amount;
+            }
+
+            // Record Machine Transaction
+            const txRecord = {
+                id: 'TX-M' + Date.now().toString().slice(-6),
+                customerId: 'MACHINE',
+                customerName: machineName,
+                category: 'machine',
+                type: action === 'fill' ? 'machine_fill' : 'machine_return',
+                amount: amount,
+                balanceAfter: action === 'fill' ? -amount : amount,
+                datetime: dtVal,
+                handler: handler || '機台管理員',
+                note: note || (action === 'fill' ? '機台補幣/洗分' : '機台回幣/開分')
+            };
+
+            transactions.unshift(txRecord);
+
+            saveData();
+            refreshAllViews();
+
+            const actionTxt = action === 'fill' ? '補幣/洗分 (-庫存)' : '回幣/開分 (+庫存)';
+            showToast(`成功為機台「${machineName}」完成 ${actionTxt} ${amount} 枚代幣登記！`, "success");
+
+            // Reset Machine Form
+            document.getElementById('mAmount').value = '';
+            document.getElementById('mNote').value = '';
+        }
+
+        function resetMachineForm() {
+            document.getElementById('machineForm').reset();
+            updateMachineActionStyle();
+        }
+
+        /* ==========================================================================
+           TAB 4: HISTORY TRANSACTIONS LOG MODULE (歷史交易明細)
+           ========================================================================== */
+
+        function switchHistorySubTab(subTab) {
+            activeHistorySubTab = subTab;
+            
+            ['all', 'member', 'machine'].forEach(tab => {
+                const btn = document.getElementById(`subnav-history-${tab}`);
+                if (btn) {
+                    if (tab === subTab) {
+                        btn.className = "py-2.5 px-4 font-bold text-sm border-b-2 border-amber-500 text-amber-600 flex items-center gap-1.5";
+                    } else {
+                        btn.className = "py-2.5 px-4 font-medium text-sm text-slate-500 hover:text-slate-800 flex items-center gap-1.5";
+                    }
+                }
+            });
+
+            renderHistoryTable();
+        }
+
+        /* ==========================================================================
+           SEARCH & LOOKUP HANDLERS
+           ========================================================================== */
+
+        function handleSearchKeypress(e) {
+            const val = e.target.value.trim().toLowerCase();
+            const clearBtn = document.getElementById('clearSearchBtn');
+            const suggestionsEl = document.getElementById('searchSuggestions');
+
+            if (val) {
+                clearBtn.classList.remove('hidden');
+                showSearchSuggestions(val);
+            } else {
+                clearBtn.classList.add('hidden');
+                suggestionsEl.classList.add('hidden');
+            }
+
+            if (e.key === 'Enter') {
+                executeSearch();
+            }
+        }
+
+        function showSearchSuggestions(query) {
+            const suggestionsEl = document.getElementById('searchSuggestions');
+            const matches = customers.filter(c => 
+                c.id.toLowerCase().includes(query) || 
+                c.name.toLowerCase().includes(query)
+            );
+
+            if (matches.length === 0) {
+                suggestionsEl.classList.add('hidden');
+                return;
+            }
+
+            suggestionsEl.innerHTML = matches.map(c => `
+                <div onclick="selectSuggestion('${c.id}')" class="px-4 py-2.5 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-sm">
+                    <div>
+                        <span class="font-bold text-slate-800">${escapeHtml(c.name)}</span>
+                        <span class="text-xs font-mono text-slate-400 ml-1">(${c.id})</span>
+                    </div>
+                    <span class="font-mono text-xs font-bold text-amber-600">餘額 ${c.balance} 枚</span>
+                </div>
+            `).join('');
+
+            suggestionsEl.classList.remove('hidden');
+        }
+
+        function selectSuggestion(custId) {
+            const cust = customers.find(c => c.id === custId);
+            if (cust) {
+                document.getElementById('searchInput').value = `${cust.name} (${cust.id})`;
+                document.getElementById('searchSuggestions').classList.add('hidden');
+                performLookup(custId);
+            }
+        }
+
+        function executeSearch() {
+            const val = document.getElementById('searchInput').value.trim();
+            document.getElementById('searchSuggestions').classList.add('hidden');
+            if (!val) {
+                showToast("請輸入欲查詢的會員編號或姓名", "warning");
+                return;
+            }
+
+            // Extract ID if selected from query format "Name (ID)"
+            let targetId = val;
+            const match = val.match(/\(([^)]+)\)/);
+            if (match) targetId = match[1];
+
+            const found = customers.find(c => 
+                c.id.toLowerCase() === targetId.toLowerCase() || 
+                c.name.toLowerCase() === val.toLowerCase()
+            );
+
+            if (found) {
+                performLookup(found.id);
+            } else {
+                showToast(`找不到與「${val}」相符的會員資料`, "error");
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            document.getElementById('searchSuggestions').classList.add('hidden');
+            selectedSearchCustId = null;
+            hideLookupResult();
+        }
+
+        function performLookup(custId) {
+            const cust = customers.find(c => c.id === custId);
+            if (!cust) return;
+
+            selectedSearchCustId = cust.id;
+
+            // Display Results Dashboard & Hide Empty State
+            document.getElementById('lookupResult').classList.remove('hidden');
+            document.getElementById('lookupEmptyState').classList.add('hidden');
+
+            // Fill Header & Stats
+            document.getElementById('resCustName').textContent = cust.name;
+            document.getElementById('resCustId').textContent = cust.id;
+            document.getElementById('resCustPhone').textContent = cust.phone || '未登記';
+            document.getElementById('resCurrentBalance').textContent = cust.balance.toLocaleString();
+            document.getElementById('resTotalDeposited').textContent = (cust.totalDeposited || 0).toLocaleString();
+            document.getElementById('resTotalWithdrawn').textContent = (cust.totalWithdrawn || 0).toLocaleString();
+
+            // Filter Customer's Transactions Log
+            const custTxList = transactions.filter(t => t.customerId === cust.id)
+                                          .sort((a,b) => new Date(b.datetime) - new Date(a.datetime));
+
+            document.getElementById('resTxCount').textContent = `共 ${custTxList.length} 筆歷史紀錄`;
+
+            const tbody = document.getElementById('resTxTableBody');
+            if (custTxList.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-slate-400">
+                            <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i> 該會員目前尚未有任何存幣或領幣交易紀錄
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = custTxList.map(t => {
+                    const isDeposit = t.type === 'deposit';
+                    const badgeClass = isDeposit 
+                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                        : 'bg-rose-100 text-rose-700 border-rose-200';
+                    const icon = isDeposit ? 'fa-arrow-down-left' : 'fa-arrow-up-right';
+                    const actionLabel = isDeposit ? '存幣 Deposit' : '領幣 Withdraw';
+                    const amountPrefix = isDeposit ? '+' : '-';
+
+                    return `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="py-3 px-6 text-slate-600 font-mono text-xs">${t.datetime}</td>
+                            <td class="py-3 px-6">
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${badgeClass} inline-flex items-center gap-1">
+                                    <i class="fa-solid ${icon}"></i> ${actionLabel}
+                                </span>
+                            </td>
+                            <td class="py-3 px-6 text-right font-mono font-bold ${isDeposit ? 'text-emerald-600' : 'text-rose-600'} text-base">
+                                ${amountPrefix}${t.amount.toLocaleString()}
+                            </td>
+                            <td class="py-3 px-6 text-right font-mono text-slate-700 font-semibold">
+                                ${t.balanceAfter.toLocaleString()}
+                            </td>
+                            <td class="py-3 px-6 text-slate-600 text-xs">${escapeHtml(t.handler || '--')}</td>
+                            <td class="py-3 px-6 text-slate-500 text-xs">${escapeHtml(t.note || '--')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        function hideLookupResult() {
+            document.getElementById('lookupResult').classList.add('hidden');
+            document.getElementById('lookupEmptyState').classList.remove('hidden');
+        }
+
+        function renderQuickBadges() {
+            const container = document.getElementById('quickCustomerBadges');
+            if (customers.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">尚無會員，請先新增或點擊「範例數據」</span>`;
+                return;
+            }
+
+            container.innerHTML = customers.map(c => `
+                <button onclick="selectQuickCustomer('${c.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 rounded-lg text-xs font-medium border border-slate-200 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-tag text-slate-400"></i>
+                    <span>${escapeHtml(c.name)}</span>
+                    <span class="font-mono text-amber-600 font-bold">(${c.balance})</span>
+                </button>
+            `).join('');
+        }
+
+        function selectQuickCustomer(custId) {
+            const cust = customers.find(c => c.id === custId);
+            if (cust) {
+                document.getElementById('searchInput').value = `${cust.name} (${cust.id})`;
+                document.getElementById('clearSearchBtn').classList.remove('hidden');
+                performLookup(custId);
+            }
+        }
+
+        function quickActionFromLookup() {
+            if (!selectedSearchCustId) return;
+            const cust = customers.find(c => c.id === selectedSearchCustId);
+            if (!cust) return;
+
+            switchTab('transaction');
+            document.getElementById('txCustomerId').value = cust.id;
+            document.getElementById('txCustomerName').value = cust.name;
+            onTxCustIdInput();
+        }
+
+        /* ==========================================================================
+           TAB 2: TRANSACTION ENTRY MODULE (存取幣登記)
+           ========================================================================== */
+
+        function updateFormActionStyle() {
+            const isDeposit = document.querySelector('input[name="actionType"]:checked').value === 'deposit';
+            const depLabel = document.getElementById('label-deposit');
+            const witLabel = document.getElementById('label-withdraw');
+
+            if (isDeposit) {
+                depLabel.className = "relative flex items-center justify-center p-4 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl cursor-pointer transition text-center select-none shadow-sm";
+                witLabel.className = "relative flex items-center justify-center p-4 border-2 border-slate-200 hover:border-slate-300 rounded-xl cursor-pointer transition text-center select-none opacity-60";
+            } else {
+                depLabel.className = "relative flex items-center justify-center p-4 border-2 border-slate-200 hover:border-slate-300 rounded-xl cursor-pointer transition text-center select-none opacity-60";
+                witLabel.className = "relative flex items-center justify-center p-4 border-2 border-rose-500 bg-rose-50/50 rounded-xl cursor-pointer transition text-center select-none shadow-sm";
+            }
+        }
+
+        function setFormDefaultDateTime() {
+            const now = new Date();
+            // Format for datetime-local: YYYY-MM-DDTHH:mm
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('txDateTime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        function onTxCustIdInput() {
+            const custId = document.getElementById('txCustomerId').value.trim().toUpperCase();
+            const cust = customers.find(c => c.id.toUpperCase() === custId);
+            
+            const nameInput = document.getElementById('txCustomerName');
+            const balancePreview = document.getElementById('txCurrentBalValue');
+
+            if (cust) {
+                nameInput.value = cust.name;
+                balancePreview.textContent = `${cust.balance.toLocaleString()} 枚`;
+                balancePreview.className = "font-bold font-mono text-sm text-emerald-600";
+            } else {
+                balancePreview.textContent = "0 枚 (全新會員)";
+                balancePreview.className = "font-bold font-mono text-sm text-slate-500";
+            }
+        }
+
+        function handleTransactionSubmit(e) {
+            e.preventDefault();
+
+            const actionType = document.querySelector('input[name="actionType"]:checked').value; // 'deposit' | 'withdraw'
+            const custId = document.getElementById('txCustomerId').value.trim().toUpperCase();
+            const custName = document.getElementById('txCustomerName').value.trim();
+            const amount = parseInt(document.getElementById('txAmount').value);
+            const dtVal = getNowFormatted();
+            const handler = document.getElementById('txHandler').value.trim();
+            const note = document.getElementById('txNote').value.trim();
+
+            if (!custId || !custName) {
+                showToast("請填寫會員編號與姓名", "warning");
+                return;
+            }
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast("請輸入有效的正整數代幣數量", "warning");
+                return;
+            }
+
+            // Find existing customer or prepare to create new
+            let custIndex = customers.findIndex(c => c.id.toUpperCase() === custId);
+            let cust = custIndex !== -1 ? customers[custIndex] : null;
+
+            // Check if overdraft occurs for withdrawal
+            const currentBal = cust ? cust.balance : 0;
+            if (actionType === 'withdraw' && currentBal < amount) {
+                // Save pending payload & show confirmation modal
+                pendingTxPayload = {
+                    actionType,
+                    custId,
+                    custName,
+                    amount,
+                    dtVal,
+                    handler,
+                    note,
+                    currentBal
+                };
+
+                document.getElementById('ovCustName').textContent = `${custName} (${custId})`;
+                document.getElementById('ovCurrentBal').textContent = `${currentBal.toLocaleString()} 枚`;
+                document.getElementById('ovWithdrawAmt').textContent = `${amount.toLocaleString()} 枚`;
+                document.getElementById('ovAfterBal').textContent = `${(currentBal - amount).toLocaleString()} 枚`;
+                
+                document.getElementById('insufficientBalanceModal').classList.remove('hidden');
+                return;
+            }
+
+            // Execute submission directly if valid balance or deposit
+            processTransactionExecution(actionType, custId, custName, amount, dtVal, handler, note);
+        }
+
+        function confirmOverdraftWithdraw() {
+            if (!pendingTxPayload) return;
+            const p = pendingTxPayload;
+            document.getElementById('insufficientBalanceModal').classList.add('hidden');
+            
+            // Append overdraft note if needed
+            const finalNote = p.note ? `${p.note} (同意透支領幣)` : '同意透支領幣';
+            processTransactionExecution(p.actionType, p.custId, p.custName, p.amount, p.dtVal, p.handler, finalNote);
+            pendingTxPayload = null;
+        }
+
+        function cancelOverdraftWithdraw() {
+            pendingTxPayload = null;
+            document.getElementById('insufficientBalanceModal').classList.add('hidden');
+            showToast("已取消本次透支領幣交易", "info");
+        }
+
+        function processTransactionExecution(actionType, custId, custName, amount, dtVal, handler, note) {
+            let custIndex = customers.findIndex(c => c.id.toUpperCase() === custId);
+            let cust = custIndex !== -1 ? customers[custIndex] : null;
+
+            // Create customer if brand new
+            if (!cust) {
+                cust = {
+                    id: custId,
+                    name: custName,
+                    phone: '',
+                    balance: 0,
+                    totalDeposited: 0,
+                    totalWithdrawn: 0
+                };
+                customers.push(cust);
+                custIndex = customers.length - 1;
+            } else {
+                // Keep name updated
+                customers[custIndex].name = custName;
+            }
+
+            // Calculate new balance
+            let newBalance = cust.balance;
+            if (actionType === 'deposit') {
+                newBalance += amount;
+                customers[custIndex].totalDeposited = (customers[custIndex].totalDeposited || 0) + amount;
+            } else {
+                newBalance -= amount;
+                customers[custIndex].totalWithdrawn = (customers[custIndex].totalWithdrawn || 0) + amount;
+            }
+            customers[custIndex].balance = newBalance;
+
+            // Record transaction
+            const txRecord = {
+                id: 'TX-' + Date.now().toString().slice(-6),
+                customerId: custId,
+                customerName: custName,
+                type: actionType,
+                amount: amount,
+                balanceAfter: newBalance,
+                datetime: dtVal,
+                handler: handler || '櫃檯人員',
+                note: note
+            };
+
+            transactions.unshift(txRecord); // Add to beginning of array
+
+            saveData();
+            refreshAllViews();
+
+            const actionTxt = actionType === 'deposit' ? '存入' : '領取';
+            showToast(`成功為 ${custName} (${custId}) ${actionTxt} ${amount} 枚代幣！`, "success");
+
+            // Reset form input values partially
+            document.getElementById('txAmount').value = '';
+            document.getElementById('txNote').value = '';
+            onTxCustIdInput();
+        }
+
+        function resetTxForm() {
+            document.getElementById('txForm').reset();
+            updateFormActionStyle();
+            onTxCustIdInput();
+        }
+
+        /* ==========================================================================
+           TAB 3: CUSTOMER MANAGEMENT MODULE (會員名冊與列表)
+           ========================================================================== */
+
+        function renderCustomersTable() {
+            const filterKeyword = (document.getElementById('custTableFilter')?.value || '').trim().toLowerCase();
+            const tbody = document.getElementById('customersTableBody');
+
+            let list = customers;
+            if (filterKeyword) {
+                list = list.filter(c => 
+                    c.id.toLowerCase().includes(filterKeyword) || 
+                    c.name.toLowerCase().includes(filterKeyword) ||
+                    (c.phone && c.phone.includes(filterKeyword))
+                );
+            }
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-8 text-slate-400">
+                            無相符的會員資料
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = list.map(c => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-4 font-mono font-bold text-slate-900">${escapeHtml(c.id)}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-800">${escapeHtml(c.name)}</td>
+                    <td class="py-3 px-4 text-slate-500 text-xs">${escapeHtml(c.phone || '--')}</td>
+                    <td class="py-3 px-4 text-right font-mono text-emerald-600 font-medium">+${(c.totalDeposited || 0).toLocaleString()}</td>
+                    <td class="py-3 px-4 text-right font-mono text-rose-600 font-medium">-${(c.totalWithdrawn || 0).toLocaleString()}</td>
+                    <td class="py-3 px-4 text-right">
+                        <span class="font-mono font-bold text-amber-600 text-base bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            ${c.balance.toLocaleString()}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="showCustomerQRCodeModal('${c.id}')" title="產生專屬 QR Code" class="p-1.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 transition text-xs font-semibold">
+                                <i class="fa-solid fa-qrcode"></i> QR
+                            </button>
+                            <button onclick="quickLookupCustomer('${c.id}')" title="個人明細查詢" class="p-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-xs">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
+                            <button onclick="quickTransactionCustomer('${c.id}', 'deposit')" title="存幣" class="p-1.5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 transition text-xs font-semibold">
+                                + 存
+                            </button>
+                            <button onclick="quickTransactionCustomer('${c.id}', 'withdraw')" title="領幣" class="p-1.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 transition text-xs font-semibold">
+                                - 領
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            renderGlobalStats();
+        }
+<!-- ... existing code========= -->
+        /* ==========================================================================
+           QR CODE & CUSTOMER DEDICATED LINK MODULE
+           ========================================================================== */
+
+        let qrcodeInstance = null;
+
+        function showCustomerQRCodeModal(custId) {
+            const cust = customers.find(c => c.id === custId);
+            if (!cust) return;
+
+            // Generate url with parameter
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = `${baseUrl}?cust=${encodeURIComponent(cust.id)}`;
+
+            document.getElementById('qrCustName').textContent = `${cust.name} (${cust.id}) 的專屬 QR Code`;
+            document.getElementById('qrShareUrl').value = shareUrl;
+
+            // Clear existing QR code canvas/image
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+
+            // Render new QRCode
+            qrcodeInstance = new QRCode(qrContainer, {
+                text: shareUrl,
+                width: 180,
+                height: 180,
+                colorDark: "#0f172a",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('qrCodeModal').classList.remove('hidden');
+        }
+
+        function closeQRCodeModal() {
+            document.getElementById('qrCodeModal').classList.add('hidden');
+        }
+
+        function copyQRUrl() {
+            const input = document.getElementById('qrShareUrl');
+            input.select();
+            document.execCommand('copy');
+            showToast("專屬查詢連結已成功複製到剪貼簿！", "success");
+        }
+
+        function quickLookupCustomer(custId) {
+            const cust = customers.find(c => c.id === custId);
+            if (cust) {
+                switchTab('lookup');
+                document.getElementById('searchInput').value = `${cust.name} (${cust.id})`;
+                document.getElementById('clearSearchBtn').classList.remove('hidden');
+                performLookup(cust.id);
+            }
+        }
+
+        function exportDataJSON() {
+            const dump = {
+                exportedAt: new Date().toISOString(),
+                customers: customers,
+                transactions: transactions
+            };
+            const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `代幣託管完整備份_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            showToast("已匯出 JSON 完整資料備份檔！", "success");
+        }
+
+        function triggerImportJSON() {
+            document.getElementById('importJsonInput').click();
+        }
+
+        function importDataJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    if (Array.isArray(data.customers) && Array.isArray(data.transactions)) {
+                        customers = data.customers;
+                        transactions = data.transactions;
+                        saveData();
+                        refreshAllViews();
+                        showToast("成功匯入備份資料！", "success");
+                    } else {
+                        showToast("無效的備份檔案格式", "error");
+                    }
+                } catch (err) {
+                    showToast("讀取 JSON 備份檔失敗", "error");
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        function quickTransactionCustomer(custId, actionType) {
+            const cust = customers.find(c => c.id === custId);
+            if (!cust) return;
+
+            switchTab('transaction');
+            document.getElementById('txCustomerId').value = cust.id;
+            document.getElementById('txCustomerName').value = cust.name;
+
+            const radio = document.querySelector(`input[name="actionType"][value="${actionType}"]`);
+            if (radio) {
+                radio.checked = true;
+                updateFormActionStyle();
+            }
+
+            onTxCustIdInput();
+        }
+
+        function openAddCustomerModal() {
+            document.getElementById('addCustomerModal').classList.remove('hidden');
+        }
+
+        function closeAddCustomerModal() {
+            document.getElementById('addCustomerModal').classList.add('hidden');
+        }
+
+        function handleAddCustomerSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('modalCustId').value.trim().toUpperCase();
+            const name = document.getElementById('modalCustName').value.trim();
+            const phone = document.getElementById('modalCustPhone').value.trim();
+            const initBal = parseInt(document.getElementById('modalInitialBalance').value) || 0;
+
+            if (customers.some(c => c.id.toUpperCase() === id)) {
+                showToast(`會員編號「${id}」已存在，請使用不同編號！`, "error");
+                return;
+            }
+
+            const newCust = {
+                id: id,
+                name: name,
+                phone: phone,
+                balance: initBal,
+                totalDeposited: initBal > 0 ? initBal : 0,
+                totalWithdrawn: 0
+            };
+
+            customers.push(newCust);
+
+            // Add initial balance transaction record if any
+            if (initBal > 0) {
+                transactions.unshift({
+                    id: 'TX-' + Date.now().toString().slice(-6),
+                    customerId: id,
+                    customerName: name,
+                    type: 'deposit',
+                    amount: initBal,
+                    balanceAfter: initBal,
+                    datetime: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                    handler: '系統開戶',
+                    note: '開戶預設代幣'
+                });
+            }
+
+            saveData();
+            refreshAllViews();
+            closeAddCustomerModal();
+            showToast(`成功新增會員：${name} (${id})`, "success");
+
+            // Reset modal form
+            document.getElementById('modalCustId').value = '';
+            document.getElementById('modalCustName').value = '';
+            document.getElementById('modalCustPhone').value = '';
+            document.getElementById('modalInitialBalance').value = '0';
+        }
+
+        /* ==========================================================================
+           TAB 4: HISTORY TRANSACTIONS LOG MODULE (歷史交易明細)
+           ========================================================================== */
+
+        function renderHistoryTable() {
+            const typeFilter = document.getElementById('historyTypeFilter').value;
+            const searchKw = (document.getElementById('historySearchInput')?.value || '').trim().toLowerCase();
+            const tbody = document.getElementById('historyTableBody');
+
+            let list = [...transactions];
+
+            // Type Filter
+            if (typeFilter !== 'all') {
+                list = list.filter(t => t.type === typeFilter);
+            }
+
+            // Keyword Filter
+            if (searchKw) {
+                list = list.filter(t => 
+                    t.customerId.toLowerCase().includes(searchKw) ||
+                    t.customerName.toLowerCase().includes(searchKw) ||
+                    (t.handler && t.handler.toLowerCase().includes(searchKw)) ||
+                    (t.note && t.note.toLowerCase().includes(searchKw))
+                );
+            }
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-400">
+                            未找到符合條件的交易紀錄
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = list.map(t => {
+                const isDeposit = t.type === 'deposit';
+                const badgeClass = isDeposit 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : 'bg-rose-100 text-rose-800';
+                const actionLabel = isDeposit ? '存幣' : '領幣';
+                const amountPrefix = isDeposit ? '+' : '-';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3 px-4 font-mono text-xs text-slate-500">${t.datetime}</td>
+                        <td class="py-3 px-4">
+                            <span class="font-bold text-slate-800">${escapeHtml(t.customerName)}</span>
+                            <span class="text-xs font-mono text-slate-400 ml-1">(${t.customerId})</span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-xs font-bold ${badgeClass}">
+                                ${actionLabel}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-right font-mono font-bold ${isDeposit ? 'text-emerald-600' : 'text-rose-600'}">
+                            ${amountPrefix}${t.amount.toLocaleString()}
+                        </td>
+                        <td class="py-3 px-4 text-right font-mono text-slate-700 font-medium">
+                            ${t.balanceAfter.toLocaleString()}
+                        </td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${escapeHtml(t.handler || '--')}</td>
+                        <td class="py-3 px-4 text-xs text-slate-500">${escapeHtml(t.note || '--')}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="deleteTransaction('${t.id}')" title="刪除本筆紀錄" class="text-slate-300 hover:text-rose-600 transition p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function deleteTransaction(txId) {
+            if (confirm("確定要刪除這筆交易紀錄嗎？注意：刪除歷史紀錄將會嘗試重新演算相關會員的當前餘額！")) {
+                const txIndex = transactions.findIndex(t => t.id === txId);
+                if (txIndex === -1) return;
+
+                const targetTx = transactions[txIndex];
+                transactions.splice(txIndex, 1);
+
+                // Recalculate customer totals and balance
+                recalculateCustomerBalances(targetTx.customerId);
+
+                saveData();
+                refreshAllViews();
+                showToast("已成功刪除該筆交易紀錄並重新計算餘額", "info");
+            }
+        }
+
+        function recalculateCustomerBalances(custId) {
+            const custIndex = customers.findIndex(c => c.id === custId);
+            if (custIndex === -1) return;
+
+            // Sort customer's transactions from oldest to newest
+            const custTxs = transactions.filter(t => t.customerId === custId)
+                                       .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+
+            let runningBal = 0;
+            let totalDep = 0;
+            let totalWit = 0;
+
+            custTxs.forEach(t => {
+                if (t.type === 'deposit') {
+                    runningBal += t.amount;
+                    totalDep += t.amount;
+                } else {
+                    runningBal -= t.amount;
+                    totalWit += t.amount;
+                }
+                t.balanceAfter = runningBal; // Update historical snapshot
+            });
+
+            customers[custIndex].balance = runningBal;
+            customers[custIndex].totalDeposited = totalDep;
+            customers[custIndex].totalWithdrawn = totalWit;
+        }
+
+        /* ==========================================================================
+           EXPORT & UTILITIES
+           ========================================================================== */
+
+        function exportDataCSV() {
+            if (transactions.length === 0) {
+                showToast("目前尚無任何交易紀錄可供匯出", "warning");
+                return;
+            }
+
+            // CSV Header with BOM for MS Excel UTF-8 recognition
+            let csvContent = "\uFEFF交易時間,類別,對象(會員/機台),動作類型,數量(枚),異動後數值,經辦人員,備註說明\n";
+
+            transactions.forEach(t => {
+                const isMachine = t.category === 'machine';
+                let typeText = '會員存幣';
+                if (t.type === 'withdraw') typeText = '會員領幣';
+                if (t.type === 'machine_fill') typeText = '機台補幣/洗分(-)';
+                if (t.type === 'machine_return') typeText = '機台回幣/開分(+)';
+
+                const row = [
+                    `"${t.datetime}"`,
+                    `"${isMachine ? '機台' : '會員'}"`,
+                    `"${t.customerName} (${t.customerId})"`,
+                    `"${typeText}"`,
+                    t.amount,
+                    isMachine ? (t.type === 'machine_return' ? t.amount : -t.amount) : t.balanceAfter,
+                    `"${(t.handler || '').replace(/"/g, '""')}"`,
+                    `"${(t.note || '').replace(/"/g, '""')}"`
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `代幣與機台作業交易紀錄_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("已成功導出 CSV 格式報表！", "success");
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-slate-800 text-white";
+            let iconClass = "fa-circle-info text-blue-400";
+
+            if (type === 'success') {
+                bgClass = "bg-emerald-900/90 border border-emerald-700 text-white shadow-lg";
+                iconClass = "fa-circle-check text-emerald-400";
+            } else if (type === 'error') {
+                bgClass = "bg-rose-900/90 border border-rose-700 text-white shadow-lg";
+                iconClass = "fa-triangle-exclamation text-rose-400";
+            } else if (type === 'warning') {
+                bgClass = "bg-amber-900/90 border border-amber-700 text-white shadow-lg";
+                iconClass = "fa-circle-exclamation text-amber-400";
+            }
+
+            toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-xl ${bgClass} flex items-center gap-3 text-sm transition-all duration-300 transform translate-y-2 opacity-0 max-w-md`;
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} text-lg"></i>
+                <span class="flex-1">${escapeHtml(message)}</span>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate In
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            // Auto Remove
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Helper to prevent XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
